@@ -1,0 +1,43 @@
+pipeline {
+    agent any
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build & Test') {
+            steps {
+                dir('docker-demo') {
+                    sh 'chmod +x mvnw'
+                    sh './mvnw clean test package'
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                dir('docker-demo') {
+                    sh 'docker build -t docker-demo:jenkins .'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh '''
+                    docker stop docker-demo-container || true
+                    docker rm docker-demo-container || true
+
+                    docker run -d \
+                      --name docker-demo-container \
+                      -p 8081:8080 \
+                      docker-demo:jenkins
+                '''
+            }
+        }
+    }
+}
